@@ -1,0 +1,521 @@
+<title>Lettres d'expertise septique</title>
+<meta name="description" content="Génère la lettre d'expertise finale d'une installation septique à partir de l'Annexe VI.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600;700&display=swap">
+<style>
+/* Layout : formulaire à gauche (sections calquées sur l'Annexe VI), aperçu papier à droite, collant. */
+:root{
+  --bg:#eef3f6; --panel:#ffffff; --ink:#15232d; --muted:#5a6b78; --line:#d3dde4;
+  --accent:#0b6aa8; --accent-soft:#e2eff8; --accent-ink:#ffffff;
+  --ok:#1f7a4c; --ok-soft:#e3f3ea; --bad:#b0412c; --bad-soft:#fbe9e5;
+  --warn:#8a5a00; --warn-soft:#fff4d6; --paper:#ffffff; --paper-ink:#111111;
+  --mark:#fff1a8; --mark-missing:#ffd9cf; --shadow:0 1px 2px rgba(20,40,60,.06),0 6px 24px rgba(20,40,60,.07);
+  --f-ui:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-head:"Barlow Semi Condensed","Barlow",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f171d; --panel:#16212a; --ink:#e3ebf0; --muted:#95a6b3; --line:#2a3945;
+  --accent:#4aa3e0; --accent-soft:#16344a; --accent-ink:#06121b;
+  --ok:#5cc58f; --ok-soft:#153024; --bad:#f08a73; --bad-soft:#3a1d17;
+  --warn:#f3c55a; --warn-soft:#352a0e; --paper:#fbfbfa; --paper-ink:#111111;
+  --mark:#fff1a8; --mark-missing:#ffd9cf; --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 24px rgba(0,0,0,.25); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f171d; --panel:#16212a; --ink:#e3ebf0; --muted:#95a6b3; --line:#2a3945;
+  --accent:#4aa3e0; --accent-soft:#16344a; --accent-ink:#06121b;
+  --ok:#5cc58f; --ok-soft:#153024; --bad:#f08a73; --bad-soft:#3a1d17;
+  --warn:#f3c55a; --warn-soft:#352a0e; --paper:#fbfbfa; --paper-ink:#111111;
+  --mark:#fff1a8; --mark-missing:#ffd9cf; --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 24px rgba(0,0,0,.25); color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--f-ui);margin:0}
+.wrap{max-width:1480px;margin:0 auto;padding-inline:16px;padding-block:18px 60px}
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:16px}
+header.top h1{font:700 26px/1.1 var(--f-head);margin:0;letter-spacing:.2px;text-wrap:balance}
+header.top p{margin:4px 0 0;color:var(--muted);max-width:60ch}
+.btn{font:600 14px var(--f-ui);border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:8px;padding:9px 14px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn:focus-visible,input:focus-visible,select:focus-visible,.seg label:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.small{padding:5px 9px;font-size:13px}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+.grid{display:grid;grid-template-columns:minmax(0,560px) minmax(0,1fr);gap:22px;align-items:start}
+@media (max-width:1060px){.grid{grid-template-columns:minmax(0,1fr)}}
+form{display:flex;flex-direction:column;gap:14px;min-width:0}
+fieldset{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:14px 16px 16px;margin:0;display:flex;flex-direction:column;gap:12px;min-width:0}
+legend{font:600 16px var(--f-head);padding:0 6px;margin-left:-6px;display:flex;gap:8px;align-items:baseline}
+legend .tag{font:600 11px var(--f-ui);letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--accent-soft);border-radius:4px;padding:2px 6px}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.row.c-narrow{grid-template-columns:110px minmax(0,1fr)}
+.row.c-3{grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr)}
+@media (max-width:520px){.row.c-3{grid-template-columns:1fr 1fr}.row.c-3>:first-child{grid-column:1/-1}}
+.f{display:flex;flex-direction:column;gap:4px;min-width:0}
+.f>span{font-size:13px;font-weight:500;color:var(--muted)}
+.f>span b{color:var(--bad);font-weight:600}
+input[type=text],input[type=date],input[type=number],select{font:15px var(--f-ui);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:8px 10px;width:100%;min-width:0}
+input.invalid,select.invalid{border-color:var(--bad);background:var(--bad-soft)}
+.prefix{display:flex}.prefix em{font-style:normal;display:flex;align-items:center;padding:0 9px;border:1px solid var(--line);border-right:0;border-radius:7px 0 0 7px;background:var(--accent-soft);color:var(--accent);font-weight:600;font-size:14px}
+.prefix input{border-radius:0 7px 7px 0}
+.hint{font-size:12.5px;color:var(--muted)}
+.check{display:flex;gap:8px;align-items:center;font-size:14px;cursor:pointer}
+.check.mq{align-self:end;padding-bottom:9px}
+.off{opacity:.42}
+.linkbtn{background:none;border:0;color:var(--accent);font:500 13px var(--f-ui);padding:0;cursor:pointer;text-decoration:underline;justify-self:start;align-self:flex-start}
+/* Section C */
+.insp{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 12px;align-items:center}
+.insp .lbl{font-size:14.5px}
+.insp .lbl small{display:block;color:var(--muted);font-size:12px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--bg)}
+.seg label{position:relative;padding:6px 12px;font-size:13.5px;font-weight:600;cursor:pointer;color:var(--muted);user-select:none}
+.seg label+label{border-left:1px solid var(--line)}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg label.on-good{background:var(--ok-soft);color:var(--ok)}
+.seg label.on-bad{background:var(--bad-soft);color:var(--bad)}
+.seg label.locked{opacity:.4;cursor:not-allowed}
+.seg label.on-na{background:var(--line);color:var(--ink)}
+.seg.invalid{border-color:var(--bad)}
+#bilan-wrap{grid-template-columns:minmax(0,1fr)}#bilan-wrap .seg{display:flex}#bilan-wrap .seg label{flex:1;text-align:center}
+.concl{border-radius:8px;padding:10px 12px;font-weight:600;font-size:14.5px}
+.concl.pos{background:var(--ok-soft);color:var(--ok)}.concl.neg{background:var(--bad-soft);color:var(--bad)}.concl.none{background:var(--bg);color:var(--muted);font-weight:500}
+.warn{background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:9px 12px;font-size:13.5px}
+.warn ul{margin:4px 0 0;padding-left:18px}
+/* Photos */
+.drop{border:1.5px dashed var(--line);border-radius:10px;padding:16px;text-align:center;color:var(--muted);cursor:pointer;font-size:14px}
+.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px}
+.thumb{position:relative;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--bg)}
+.thumb img{display:block;width:100%;aspect-ratio:1;object-fit:cover}
+.thumb .n{position:absolute;top:4px;left:4px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;font-weight:600;border-radius:4px;padding:1px 6px}
+.thumb .tb{display:flex;justify-content:space-between;padding:3px}
+.thumb .tb button{border:0;background:none;color:var(--ink);cursor:pointer;font-size:14px;padding:2px 6px;border-radius:4px}
+.thumb .tb button:hover{background:var(--accent-soft)}
+.thumb .tb button.del{color:var(--bad)}
+/* Barre d'actions */
+.bar{position:sticky;bottom:0;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;box-shadow:var(--shadow);padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+.status{font-size:13.5px;color:var(--muted);min-width:0}
+.status.err{color:var(--bad)}.status.ok{color:var(--ok)}
+/* Aperçu */
+.pv{position:sticky;top:calc(12px + env(safe-area-inset-top,0px));min-width:0}
+.pv-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.pv-head h2{font:600 16px var(--f-head);margin:0}
+.pv-head span{font-size:12.5px;color:var(--muted)}
+.paper-scroll{max-height:calc(100vh - 80px);overflow:auto;border-radius:6px}
+@media (max-width:1060px){.pv{position:static}.paper-scroll{max-height:none}}
+.paper{background:var(--paper);color:var(--paper-ink);box-shadow:var(--shadow);padding:36px 48px 48px;font:13.5px/1.5 Arial,Helvetica,sans-serif;border-radius:3px;min-width:0}
+@media (max-width:600px){.paper{padding:22px 18px;font-size:12.5px}}
+.paper .logo{display:block;margin-left:auto;width:170px;max-width:45%;margin-bottom:18px}
+.paper p{margin:0 0 9px;min-height:1em;overflow-wrap:anywhere}
+.paper p.j{text-align:justify}.paper p.c{text-align:center}
+.paper p.empty{margin:0;min-height:.7em}
+.paper .tab{display:inline-block;width:3.8em}
+.paper mark{background:var(--mark);color:inherit;padding:0 1px}
+.paper mark.missing{background:var(--mark-missing);font-style:italic}
+.paper .sig{width:180px;display:block;margin:4px 0 -6px -8px}
+.paper .brk{border:0;border-top:1px dashed #b8c2c9;margin:22px -20px;position:relative;overflow:visible}
+.paper .brk::after{content:attr(data-l);position:absolute;right:0;top:-9px;background:var(--paper);color:#8a97a0;font-size:10.5px;padding-left:6px;font-family:var(--f-ui)}
+.paper .pgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:10px 0 16px}
+.paper .pgrid img{width:100%;height:190px;object-fit:contain;background:#f2f2f2}
+.paper .nophoto{color:#8a97a0;font-style:italic;font-size:12px;margin:8px 0 14px}
+.paper .small{font-size:10px}
+@media (prefers-reduced-motion:no-preference){.seg label,.btn{transition:background .12s,border-color .12s,color .12s}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Lettres d'expertise — installations septiques</h1>
+      <p>Retranscris le formulaire de la ville rempli sur le terrain. La lettre se construit toute seule selon les réponses, prête à signer.</p>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn" id="btn-example">Remplir un exemple</button>
+      <button type="button" class="btn" id="btn-reset">Nouvelle lettre</button>
+    </div>
+  </header>
+
+  <div class="grid">
+    <form id="form" autocomplete="off" novalidate>
+      <fieldset>
+        <legend>Municipalité</legend>
+        <label class="f"><span>Formulaire rempli sur le terrain <b>*</b></span>
+          <select id="muni" data-req="Municipalité"><option value="">Choisir…</option><option value="magog">Magog — Annexe VI</option><option value="eastman">Eastman — Annexe A</option><option value="austin">Austin — Annexe A</option><option value="ogden">Ogden — Annexe A</option></select></label>
+        <div class="hint" id="muni-hint">La ville choisie ajuste le formulaire et la pièce jointe mentionnée dans la lettre.</div>
+      </fieldset>
+
+      <fieldset>
+        <legend><span class="tag" data-sec="A">Annexe · A</span> Destinataire(s)</legend>
+        <div class="row c-narrow">
+          <label class="f"><span>Civilité</span><select id="civ1"><option>Mme</option><option>M.</option></select></label>
+          <label class="f"><span>Nom du destinataire <b>*</b></span><input type="text" id="nom1" data-req="Nom du destinataire"></label>
+        </div>
+        <label class="check"><input type="checkbox" id="dest2"> Ajouter un deuxième destinataire</label>
+        <div class="row c-narrow" id="dest2-row">
+          <label class="f"><span>Civilité</span><select id="civ2"><option>M.</option><option>Mme</option></select></label>
+          <label class="f"><span>Nom du 2<sup>e</sup> destinataire</span><input type="text" id="nom2"></label>
+        </div>
+        <label class="f"><span>Adresse postale <b>*</b></span><input type="text" id="adresse" data-req="Adresse postale"></label>
+        <div class="row c-3">
+          <label class="f"><span>Ville <b>*</b></span><input type="text" id="ville" data-req="Ville"></label>
+          <label class="f"><span>Province</span><input type="text" id="province" value="Québec"></label>
+          <label class="f"><span>Code postal <b>*</b></span><input type="text" id="cp" data-req="Code postal"></label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Dossier et propriété inspectée</legend>
+        <div class="row">
+          <label class="f"><span>N/réf. (dossier) <b>*</b></span><span class="prefix"><em>ING-</em><input type="text" id="nref" placeholder="3729-24" data-req="N/réf."></span></label>
+          <label class="f"><span>Numéro de lot <b>*</b></span><input type="text" id="lot" placeholder="4461965" data-req="Numéro de lot"></label>
+        </div>
+        <label class="f"><span>Adresse de la propriété <b>*</b></span><input type="text" id="adr_trav" data-req="Adresse de la propriété"></label>
+        <label class="f"><span>Ville de la propriété <b>*</b></span><input type="text" id="ville_trav" data-req="Ville de la propriété"></label>
+        <button type="button" class="linkbtn" id="copy-adr">Même adresse que le destinataire</button>
+      </fieldset>
+
+      <fieldset>
+        <legend>Visite d'expertise</legend>
+        <div class="row">
+          <label class="f"><span>1<sup>re</sup> journée d'expertise <b>*</b></span><input type="date" id="d1" data-req="Date d'expertise"></label>
+          <label class="f"><span>2<sup>e</sup> journée (s'il y a lieu)</span><input type="date" id="d2"></label>
+        </div>
+        <div class="row c-narrow">
+          <label class="f"><span>Civilité</span><select id="civtech"><option>M.</option><option>Mme</option></select></label>
+          <label class="f"><span>Technicien <b>*</b></span><input type="text" id="tech" list="techs" data-req="Technicien"></label>
+        </div>
+        <datalist id="techs"><option value="Philippe Drouin"></option><option value="Michel Godue"></option><option value="Jérémy Veilleux"></option></datalist>
+        <label class="f"><span>Date de la lettre <b>*</b></span><input type="date" id="dlettre" data-req="Date de la lettre"></label>
+      </fieldset>
+
+      <fieldset>
+        <legend><span class="tag" data-sec="B">Annexe · B</span> Composantes de l'installation</legend>
+        <div class="row">
+          <label class="f"><span>Chambres à coucher <b>*</b></span><input type="number" id="chambres" min="1" max="12" inputmode="numeric" data-req="Nombre de chambres"></label>
+          <label class="f"><span>Fosse septique <b>*</b></span>
+            <select id="fosse" data-req="Type de fosse"><option value="">Choisir…</option><option value="en béton">Béton</option><option value="en polyéthylène">Polyéthylène</option><option value="en fibre de verre">Fibre de verre</option><option value="en métal">Métal</option><option value="autre">Autre…</option></select></label>
+        </div>
+        <label class="f" id="fosse-autre-wrap"><span>Précise le type de fosse (ex. « en béton préfabriqué »)</span><input type="text" id="fosse_autre"></label>
+        <div class="row">
+          <label class="f"><span>Année d'installation <b>*</b></span><input type="number" id="annee" min="1900" max="2100" inputmode="numeric"></label>
+          <label class="check mq"><input type="checkbox" id="annee_mq"> Information manquante</label>
+        </div>
+        <div class="row">
+          <label class="f"><span>Capacité de la fosse (m³) <b>*</b></span><input type="number" id="cap" step="any" min="0" inputmode="decimal"></label>
+          <input type="hidden" id="capunit" value="m3">
+        </div>
+        <label class="check"><input type="checkbox" id="cap_mq"> Capacité : information manquante</label>
+        <div class="hint" id="cap-hint">Dans la lettre : —</div>
+        <label class="f"><span>Élément épurateur <b>*</b></span>
+          <select id="epur" data-req="Type d'élément épurateur"><option value="">Choisir…</option><option>classique</option><option>modifié</option><option>zone d'infiltration</option><option>puits absorbant</option><option>filtre à sable hors sol</option><option>filtre à sable classique</option><option>champ de polissage</option><option value="autre">Autre…</option></select></label>
+        <label class="f" id="epur-autre-wrap"><span>Précise le type d'élément épurateur</span><input type="text" id="epur_autre"></label>
+      </fieldset>
+
+      <fieldset>
+        <legend><span class="tag" data-sec="C">Annexe · C</span> Inspection</legend>
+        <div id="insp-note" class="warn" hidden></div>
+        <div class="insp" id="insp"></div>
+        <div class="hint">N/A : test pas fait parce qu'un autre test était déjà inadéquat (l'installation est alors non fonctionnelle et/ou polluante).</div>
+      </fieldset>
+
+      <fieldset>
+        <legend><span class="tag" data-sec="D">Annexe · D</span> <span id="diag-title">Diagnostic</span></legend>
+        <div class="insp" id="diag"></div>
+        <div class="insp" id="bilan-wrap" hidden></div>
+        <div id="concl" class="concl none">Coche le diagnostic pour choisir la conclusion.</div>
+        <div id="warn" class="warn" hidden></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Photos</legend>
+        <div class="drop" id="drop" tabindex="0" role="button">Glisse les photos ici ou <u>clique pour les choisir</u><br><span class="hint">4 photos par page, dans l'ordre affiché</span></div>
+        <input type="file" id="files" accept="image/*" multiple hidden>
+        <div class="thumbs" id="thumbs"></div>
+      </fieldset>
+
+      <div class="bar">
+        <div class="status" id="status">Prêt.</div>
+        <button type="button" class="btn primary" id="btn-docx">Télécharger le Word</button>
+      </div>
+    </form>
+
+    <section class="pv" aria-label="Aperçu">
+      <div class="pv-head"><h2>Aperçu de la lettre</h2><span>En jaune : ce qui vient du formulaire · la mise en page exacte est celle du Word</span></div>
+      <div class="paper-scroll"><div class="paper" id="paper">Chargement du modèle…</div></div>
+    </section>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+const TEMPLATE_B64="__TEMPLATE_B64__";
+const $=id=>document.getElementById(id);
+const MOIS=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+const NB=['','une','deux','trois','quatre','cinq','six','sept','huit','neuf','dix','onze','douze'];
+const INSP=[
+  {k:'plomb',t:'Raccordement de la plomberie'},
+  {k:'niv',t:"Niveau d'eau dans la fosse"},
+  {k:'fluo',t:'Test à la fluorescéine'},
+  {k:'fum',t:'Test de fumigène'},
+  {k:'sat',t:"Test de saturation de l'épurateur"},
+  {k:'dist',t:'Distances séparatrices',s:'Section E · plan de localisation'}
+];
+const DIAG=[
+  {k:'fonct',t:'Installation septique',a:['oui','Fonctionnelle','good'],b:['non','Non fonctionnelle','bad']},
+  {k:'poll',t:'Installation septique',a:['non','Non polluante','good'],b:['oui','Polluante','bad']}
+];
+const CITY={
+  magog:{nom:'Magog',ann:'Annexe VI',pj:'Annexe VI – Attestation de bon fonctionnement des installations septiques d’une résidence isolée',diag:true,c:true,loc:'E',
+    hint:'Formulaire à retourner à environnement@ville.magog.qc.ca'},
+  eastman:{nom:'Eastman',ann:'Annexe A',pj:'Annexe A – Attestation de bon fonctionnement des installations septiques d’une résidence isolée',diag:true,c:true,loc:'E',
+    hint:'Formulaire à retourner à environnement@eastman.quebec'},
+  austin:{nom:'Austin',ann:'Annexe A',pj:'Annexe A – Attestation de fonctionnement des installations sanitaires d’une résidence isolée',diag:false,c:true,loc:'D',
+    hint:'Pas de diagnostic sur ce formulaire : le bilan final vient du technicien. Initiales du propriétaire et du responsable sur chaque page.'},
+  ogden:{nom:'Ogden',ann:'Annexe A',pj:'Annexe A – Attestation de fonctionnement de l’installation septique d’une résidence isolée',diag:false,c:false,loc:'D',
+    hint:'Pas de section Inspection ni de diagnostic : les résultats des tests et le bilan final viennent du technicien.'}
+};
+const cfg=f=>CITY[f.muni]||null;
+const TESTS=['plomb','niv','fluo','fum','sat'];
+const TEXT_FIELDS=['annee','nom1','nom2','adresse','ville','province','cp','nref','lot','adr_trav','ville_trav','d1','d2','tech','dlettre','chambres','fosse_autre','cap','epur_autre'];
+const SELECTS=['muni','civ1','civ2','civtech','fosse','capunit','epur'];
+let photos=[]; let tpl=null; let media={};
+
+/* ---------- construction des contrôles C / D ---------- */
+function segHtml(name,opts){return '<div class="seg" id="seg-'+name+'">'+opts.map(o=>'<label data-kind="'+o[2]+'"><input type="radio" name="'+name+'" value="'+o[0]+'">'+o[1]+'</label>').join('')+'</div>'}
+function renderInsp(muni){const c=CITY[muni];const keep={};[...INSP].forEach(i=>keep[i.k]=radio(i.k));
+  $('insp').innerHTML=INSP.map(i=>{const o=[['bon','Bon','good'],['mauv',i.k==='dist'?'Non conforme':'Inadéquat','bad']];if(['fluo','fum','sat'].includes(i.k))o.push(['na','N/A','na']);else if(c&&!c.c&&i.k!=='dist')o.push(['nf','Non fait','bad']);
+    const sub=i.k==='dist'?'Section '+(c?c.loc:'E')+' · plan de localisation':'';return '<div class="lbl">'+i.t+(sub?'<small>'+sub+'</small>':'')+'</div>'+segHtml(i.k,o)}).join('');
+  INSP.forEach(i=>{const r=document.querySelector('input[name="'+i.k+'"][value="'+keep[i.k]+'"]');if(r)r.checked=true})}
+let curMuni=null;renderInsp('');
+$('bilan-wrap').innerHTML='<div class="lbl">Bilan final du technicien</div>'+segHtml('bilan',[['pos','Fonctionnelle et non polluante','good'],['neg','Non fonctionnelle et/ou polluante','bad']]);
+$('diag').innerHTML=DIAG.map(d=>'<div class="lbl">'+d.t+'</div>'+segHtml(d.k,[d.a,d.b])).join('');
+function radio(name){const r=document.querySelector('input[name="'+name+'"]:checked');return r?r.value:''}
+function paintSegs(){document.querySelectorAll('.seg label').forEach(l=>{const on=l.querySelector('input').checked;l.classList.toggle('on-good',on&&l.dataset.kind==='good');l.classList.toggle('on-bad',on&&l.dataset.kind==='bad');l.classList.toggle('on-na',on&&l.dataset.kind==='na')})}
+
+/* ---------- lecture du formulaire ---------- */
+function read(){
+  const f={};TEXT_FIELDS.forEach(k=>f[k]=$(k).value.trim());SELECTS.forEach(k=>f[k]=$(k).value);
+  f.dest2=$('dest2').checked;f.annee_mq=$('annee_mq').checked;f.cap_mq=$('cap_mq').checked;[...INSP,...DIAG,{k:'bilan'}].forEach(i=>f[i.k]=radio(i.k));return f;
+}
+function write(f){TEXT_FIELDS.forEach(k=>{if(k in f)$(k).value=f[k]});SELECTS.forEach(k=>{if(k in f&&f[k]!==undefined)$(k).value=f[k]});
+  $('dest2').checked=!!f.dest2;$('annee_mq').checked=!!f.annee_mq;$('cap_mq').checked=!!f.cap_mq;renderInsp(f.muni||'');curMuni=f.muni||'';
+  document.querySelectorAll('.seg input').forEach(r=>r.checked=(f[r.name]===r.value));}
+
+/* ---------- mise en forme des valeurs ---------- */
+function parseD(s){if(!s)return null;const[y,m,d]=s.split('-').map(Number);return{y,m,d}}
+function jour(d){return d===1?'1er':String(d)}
+function fmtDate(s){const p=parseD(s);return p?jour(p.d)+' '+MOIS[p.m-1]+' '+p.y:''}
+function datesExpertise(a,b){
+  let A=parseD(a),B=parseD(b);if(!A)return '';if(!B||a===b)return 'le '+fmtDate(a);
+  if(b<a){[A,B]=[B,A]}
+  if(A.y===B.y&&A.m===B.m)return 'les '+jour(A.d)+' et '+jour(B.d)+' '+MOIS[A.m-1]+' '+A.y;
+  if(A.y===B.y)return 'les '+jour(A.d)+' '+MOIS[A.m-1]+' et '+jour(B.d)+' '+MOIS[B.m-1]+' '+A.y;
+  return 'les '+fmtDate(A.y+'-'+A.m+'-'+A.d)+' et '+fmtDate(B.y+'-'+B.m+'-'+B.d);
+}
+function chambres(n){n=parseInt(n,10);if(!n||n<1)return '';const w=NB[n]||String(n);return w+' ('+n+') chambre'+(n>1?'s':'')}
+function m3(f){const v=parseFloat(String(f.cap).replace(',','.'));if(!(v>0))return '';const m=v;return m.toFixed(1).replace('.',',')+' m³'}
+function lotFmt(s){const d=s.replace(/[\s ]/g,'');return /^\d+$/.test(d)?d.replace(/\B(?=(\d{3})+(?!\d))/g,' '):s}
+function fosseTxt(f){return f.fosse==='autre'?f.fosse_autre:f.fosse}
+function epurTxt(f){return f.epur==='autre'?f.epur_autre:f.epur}
+function nrefFull(f){return f.nref?'ING-'+f.nref.replace(/^ING-/i,''):''}
+function fileName(f){const n=nrefFull(f)||'ING-XXXX';return n+' - Expertise installation septique.docx'}
+
+function fields(f){
+  return {
+    DATE_LETTRE:[fmtDate(f.dlettre),'Date de la lettre'],
+    DEST1:[f.nom1?f.civ1+' '+f.nom1:'','Destinataire'],
+    DEST2:[f.nom2?f.civ2+' '+f.nom2:'','2e destinataire'],
+    ADRESSE:[f.adresse,'Adresse'],VILLE:[f.ville,'Ville'],PROVINCE:[f.province||'Québec','Province'],CP:[f.cp.toUpperCase(),'Code postal'],
+    ADRESSE_TRAVAUX:[f.adr_trav,'Adresse de la propriété'],VILLE_TRAVAUX:[f.ville_trav,'Ville'],
+    LOT:[lotFmt(f.lot),'Lot'],NREF:[nrefFull(f),'N/réf.'],
+    DATES_EXPERTISE:[datesExpertise(f.d1,f.d2),'le [date]'],
+    TECHNICIEN:[f.tech?f.civtech+' '+f.tech:'','Technicien'],
+    CHAMBRES:[chambres(f.chambres),'[nombre] chambre(s)'],
+    FOSSE_MAT:[fosseTxt(f),'en [matériau]'],CAPACITE:[f.cap_mq?'non déterminée':(m3(f)?'d’environ '+m3(f):''),'d’environ [capacité] m³'],
+    PJ_FORM:[cfg(f)?cfg(f).pj:'','Formulaire de la municipalité'],EPURATEUR:[epurTxt(f),'[type]'],
+    ANNEE:[f.annee_mq?'inconnue.':(/^\d{4}$/.test(f.annee)?'relié à l’année '+f.annee+'.':''),'relié à l’année [année].'],
+    FICHIER:[fileName(f),'']
+  };
+}
+function flags(f){
+  const allGood=f.fluo==='bon'&&f.fum==='bon'&&f.sat==='bon';
+  const c=cfg(f);let pos,decided;
+  if(c&&!c.diag){decided=!!f.bilan;pos=f.bilan==='pos'}else{pos=f.fonct==='oui'&&f.poll==='non';decided=!!(f.fonct&&f.poll)}
+  if(testEchoue(f)){pos=false;decided=true}
+  return {DEST2:f.dest2&&!!f.nom2,PLOMB_BON:f.plomb==='bon',PLOMB_MAUV:f.plomb==='mauv',NIV_BON:f.niv==='bon',NIV_MAUV:f.niv==='mauv',
+    ESSAIS_BONS:allGood,FLUO_FAIT:f.fluo!=='na',SAT_FAIT:f.sat!=='na',FUM_FAIT:f.fum!=='na',FLUO_MAUV:f.fluo==='mauv',FUM_MAUV:f.fum==='mauv',SAT_MAUV:f.sat==='mauv',
+    DIST_BON:f.dist==='bon',DIST_MAUV:f.dist==='mauv',DIST_BON2:f.dist==='bon',CONC_POS:decided&&pos,CONC_NEG:decided&&!pos,PHOTOS1:Math.ceil(photos.length/4)>1};
+}
+
+/* ---------- moteur de gabarit ---------- */
+const xe=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function applyIf(x,fl){let p;do{p=x;x=x.replace(/<!--IF:(\w+)-->([\s\S]*?)<!--ENDIF:\1-->/g,(m,n,inner)=>fl[n]?inner:'')}while(x!==p);return x}
+function fillTokens(x,fd,preview){return x.replace(/\{\{(\w+)\}\}/g,(m,k)=>{if(!(k in fd))return m;const[v,ph]=fd[k];
+  if(!preview)return xe(v);if(!v)return ''+xe('['+ph+']')+'';return ''+xe(v)+''})}
+
+/* ---------- photos → XML Word ---------- */
+const EMU_W=2850000,EMU_H=3150000;
+function fit(w,h){const r=Math.min(EMU_W/w,EMU_H/h);return[Math.round(w*r),Math.round(h*r)]}
+function drawingXml(p,i){const[cx,cy]=fit(p.w,p.h);const id=9000+i;
+  return '<w:r><w:rPr><w:noProof/></w:rPr><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="'+cx+'" cy="'+cy+'"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:docPr id="'+id+'" name="Photo '+(i+1)+'"/><wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></wp:cNvGraphicFramePr><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="'+id+'" name="photo'+(i+1)+'.jpg"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rIdPhoto'+(i+1)+'"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="'+cx+'" cy="'+cy+'"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>'}
+function cell(inner){return '<w:tc><w:tcPr><w:tcW w:w="4680" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr><w:p><w:pPr><w:spacing w:before="0" w:after="0"/><w:jc w:val="center"/></w:pPr>'+inner+'</w:p></w:tc>'}
+function tableXml(chunk,start){let rows='';for(let r=0;r<chunk.length;r+=2){rows+='<w:tr><w:trPr><w:trHeight w:val="5500"/></w:trPr>'+cell(drawingXml(chunk[r],start+r))+cell(chunk[r+1]?drawingXml(chunk[r+1],start+r+1):'')+'</w:tr>'}
+  return '<w:tbl><w:tblPr><w:tblStyle w:val="Grilledutableau"/><w:tblW w:w="9360" w:type="dxa"/><w:tblBorders><w:top w:val="none" w:sz="0" w:space="0" w:color="auto"/><w:left w:val="none" w:sz="0" w:space="0" w:color="auto"/><w:bottom w:val="none" w:sz="0" w:space="0" w:color="auto"/><w:right w:val="none" w:sz="0" w:space="0" w:color="auto"/><w:insideH w:val="none" w:sz="0" w:space="0" w:color="auto"/><w:insideV w:val="none" w:sz="0" w:space="0" w:color="auto"/></w:tblBorders><w:tblLayout w:type="fixed"/><w:tblLook w:val="04A0" w:firstRow="1" w:lastRow="0" w:firstColumn="1" w:lastColumn="0" w:noHBand="0" w:noVBand="1"/></w:tblPr><w:tblGrid><w:gridCol w:w="4680"/><w:gridCol w:w="4680"/></w:tblGrid>'+rows+'</w:tbl>'}
+const PB='<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
+function photoBlocks(){const ch=[];for(let i=0;i<photos.length;i+=4)ch.push(photos.slice(i,i+4));
+  if(!ch.length)return{p1:'',p2:''};
+  const last=ch.pop();const p1=ch.map((c,k)=>tableXml(c,k*4)).join(PB);
+  return{p1,p2:tableXml(last,ch.length*4)}}
+
+/* ---------- aperçu : rendu direct du XML Word ---------- */
+const W='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+function wAttr(el,name){return el?el.getAttributeNS(W,name)??el.getAttribute('w:'+name):null}
+function kid(el,name){if(!el)return null;for(const c of el.children)if(c.localName===name)return c;return null}
+function onOff(el){if(!el)return false;const v=wAttr(el,'val');return !(v==='0'||v==='false')}
+function runHtml(r){const rp=kid(r,'rPr');const st=wAttr(kid(rp,'rStyle'),'val');
+  let b=onOff(kid(rp,'b'))||(st==='lev'&&!(kid(rp,'b')&&!onOff(kid(rp,'b'))));let i=onOff(kid(rp,'i'))||st==='Accentuation';const uEl=kid(rp,'u');const u=uEl&&wAttr(uEl,'val')!=='none';
+  const sz=kid(rp,'sz');const small=sz&&parseInt(wAttr(sz,'val'))<=18;let h='';
+  for(const c of r.children){if(c.localName==='t')h+=c.textContent.replace(/&/g,'&amp;').replace(/</g,'&lt;');else if(c.localName==='tab')h+='<span class="tab"></span>';
+    else if(c.localName==='drawing'&&new XMLSerializer().serializeToString(c).indexOf('"rId8"')>=0&&media.sig)h+='<img class="sig" alt="Signature" src="'+media.sig+'">';}
+  if(!h)return '';if(b)h='<b>'+h+'</b>';if(i)h='<i>'+h+'</i>';if(u)h='<u>'+h+'</u>';if(small)h='<span class="small">'+h+'</span>';return h}
+function paraHtml(p){const pp=kid(p,'pPr');const jc=wAttr(kid(pp,'jc'),'val');const ind=kid(pp,'ind');let st='';
+  const left=ind?parseInt(wAttr(ind,'left')||'0'):0;if(left>0)st=' style="padding-left:'+(left/20)+'pt"';
+  let h='',brk=false;for(const c of p.children){if(c.localName==='r'){if([...c.getElementsByTagNameNS(W,'br')].some(b=>wAttr(b,'type')==='page'))brk=true;h+=runHtml(c)}
+    else if(c.localName==='proofErr'){} else if(c.localName==='hyperlink'){for(const r of c.children)if(r.localName==='r')h+=runHtml(r)}}
+  const sect=pp&&kid(pp,'sectPr');let out='';
+  if(h.replace(/<[^>]+>/g,'').trim()||h.indexOf('<img')>=0)out='<p class="'+(jc==='both'?'j':jc==='center'?'c':'')+'"'+st+'>'+h+'</p>';
+  else if(!brk&&!sect)out='<p class="empty"></p>';
+  if(brk)out+='<hr class="brk" data-l="saut de page">';if(sect)out+='<hr class="brk" data-l="nouvelle page">';return out}
+function renderPreview(xml){
+  const doc=new DOMParser().parseFromString(xml,'application/xml');const body=doc.getElementsByTagNameNS(W,'body')[0];
+  let h=media.logo?'<img class="logo" alt="Ingénotech" src="'+media.logo+'">':'';let blanks=0;
+  for(const el of body.children){
+    if(el.localName==='p'){const t=el.textContent;
+      if(t==='§PHOTOS§'){h+=photos.length?'<div class="pgrid">'+photos.map(p=>'<img alt="" src="'+p.url+'">').join('')+'</div>':'<div class="nophoto">Aucune photo ajoutée — la page de photos sera vide.</div>';continue}
+      let ph=paraHtml(el);if(ph==='<p class="empty"></p>'){if(++blanks>2)continue}else blanks=0;h+=ph}
+    else if(el.localName==='tbl'){for(const p of el.getElementsByTagNameNS(W,'p'))h+=paraHtml(p).replace('<p class="empty"></p>','')}
+  }
+  h=h.replace(//g,'<mark>').replace(//g,'<mark class="missing">').replace(//g,'</mark>');
+  $('paper').innerHTML=h;
+}
+
+/* ---------- mise à jour ---------- */
+function coherence(f){const w=[];const fl=flags(f);const bad=INSP.filter(i=>i.k!=='dist'&&f[i.k]==='mauv').map(i=>i.t.toLowerCase());
+  const src=cfg(f)&&!cfg(f).diag?'le bilan du technicien':'le diagnostic (section D)';
+  if(fl.CONC_POS&&bad.length)w.push('La conclusion « fonctionnelle et non polluante » affirme que tout est conforme, mais l\'inspection indique : '+bad.join(', ')+'. Vérifie avec le technicien.');
+  if(fl.CONC_NEG&&TESTS.every(k=>f[k]==='bon'))w.push('Tout est « Bon » à l\'inspection, mais '+src+' mène à la conclusion négative. Vérifie avec le technicien.');
+  const na=['fluo','fum','sat'].filter(k=>f[k]==='na');
+  if(na.length&&!['fluo','fum','sat'].some(k=>f[k]==='mauv'))w.push('N/A s\'utilise seulement quand un autre test est inadéquat. Indique quel test a échoué.');
+  const nf=INSP.filter(i=>f[i.k]==='nf').map(i=>i.t.toLowerCase());
+  if(nf.length)w.push('Non fait : '+nf.join(', ')+'. La lettre décrit toutes ces vérifications comme réalisées, donc elle ne peut pas être générée telle quelle.');
+  return w}
+const testEchoue=f=>['fluo','fum','sat'].some(k=>f[k]==='mauv');
+let wasForced=false;
+function applyForced(){const forced=['fluo','fum','sat'].some(k=>radio(k)==='mauv');
+  if(wasForced&&!forced)['fonct','poll','bilan'].forEach(n=>document.querySelectorAll('input[name="'+n+'"]').forEach(r=>r.checked=false));wasForced=forced;
+  [['fonct','non'],['poll','oui'],['bilan','neg']].forEach(([n,v])=>document.querySelectorAll('input[name="'+n+'"]').forEach(r=>{
+    if(forced)r.checked=r.value===v;const lock=forced&&r.value!==v;r.disabled=lock;r.closest('label').classList.toggle('locked',lock)}));return forced}
+function update(){
+  const forced=applyForced();const f=read();paintSegs();
+  $('dest2-row').classList.toggle('off',!f.dest2);$('civ2').disabled=$('nom2').disabled=!f.dest2;
+  $('fosse-autre-wrap').hidden=f.fosse!=='autre';$('epur-autre-wrap').hidden=f.epur!=='autre';
+  const c=m3(f);$('cap-hint').textContent='Dans la lettre : '+(f.cap_mq?'« capacité potentielle non déterminée »':c?'« capacité potentielle d’environ '+c+' »':'—');
+  $('cap').disabled=$('capunit').disabled=f.cap_mq;$('annee').disabled=f.annee_mq;if(f.annee_mq)$('annee').value='';if(f.cap_mq)$('cap').value='';
+  const k=cfg(f);if((f.muni||'')!==curMuni){curMuni=f.muni||'';renderInsp(curMuni);paintSegs();if(k&&!$('ville_trav').value.trim())$('ville_trav').value=k.nom}
+  document.querySelectorAll('[data-sec]').forEach(t=>{const sec=t.dataset.sec;const a=k?k.ann:'Annexe';
+    t.textContent=sec==='C'?(k&&!k.c?'Fiche du technicien':a+' · C + '+(k?k.loc:'E')):sec==='D'?(k&&!k.diag?'Technicien':a+' · D'):a+' · '+sec});
+  $('diag-title').textContent=k&&!k.diag?'Bilan final':'Diagnostic';$('diag').hidden=!!(k&&!k.diag);$('bilan-wrap').hidden=!(k&&!k.diag);
+  $('muni-hint').textContent=k?k.hint:'La ville choisie ajuste le formulaire et la pièce jointe mentionnée dans la lettre.';
+  $('insp-note').hidden=!(k&&!k.c);$('insp-note').textContent='Le formulaire d\'Ogden n\'a pas de section Inspection : prends les résultats notés par le technicien. Si un test n\'a pas été fait, choisis « Non fait ».';
+  const fl=flags(f);const cc=$('concl');
+  if(forced){cc.className='concl neg';cc.textContent='Conclusion : non fonctionnelle et polluante — automatique, un test est inadéquat'}
+  else if(fl.CONC_POS){cc.className='concl pos';cc.textContent='Conclusion : fonctionnelle et non polluante'}
+  else if(fl.CONC_NEG){cc.className='concl neg';cc.textContent='Conclusion : non fonctionnelle et/ou polluante'}
+  else{cc.className='concl none';cc.textContent=k&&!k.diag?'Coche le bilan final du technicien pour choisir la conclusion.':'Coche le diagnostic pour choisir la conclusion.'}
+  const w=coherence(f);$('warn').hidden=!w.length;$('warn').innerHTML=w.length?'<b>À vérifier</b><ul>'+w.map(x=>'<li>'+x+'</li>').join('')+'</ul>':'';
+  if(tpl){let x=applyIf(tpl.doc,fl);x=fillTokens(x,fields(f),true);
+    x=x.replace('{{PHOTOS1}}','').replace('{{PHOTOS2}}','<w:p><w:r><w:t>§PHOTOS§</w:t></w:r></w:p>');renderPreview(x)}
+  try{localStorage.setItem('expertise-septique-brouillon',JSON.stringify(f))}catch(e){}
+}
+
+/* ---------- validation ---------- */
+function validate(f){const miss=[];document.querySelectorAll('.invalid').forEach(e=>e.classList.remove('invalid'));
+  document.querySelectorAll('[data-req]').forEach(el=>{if(!el.value.trim()){miss.push(el.dataset.req);el.classList.add('invalid')}});
+  if(f.fosse==='autre'&&!f.fosse_autre){miss.push('Type de fosse');$('fosse_autre').classList.add('invalid')}
+  if(f.epur==='autre'&&!f.epur_autre){miss.push("Type d'élément épurateur");$('epur_autre').classList.add('invalid')}
+  if(f.dest2&&!f.nom2){miss.push('Nom du 2e destinataire');$('nom2').classList.add('invalid')}
+  if(!f.annee_mq&&!/^\d{4}$/.test(f.annee)){miss.push('Année d\'installation (ou « information manquante »)');$('annee').classList.add('invalid')}
+  if(!f.cap_mq&&!(parseFloat(String(f.cap).replace(',','.'))>0)){miss.push('Capacité de la fosse (ou « information manquante »)');$('cap').classList.add('invalid')}
+  const k=cfg(f);const need=[...INSP,...(k&&!k.diag?[{k:'bilan',t:'Bilan final du technicien'}]:DIAG)];
+  need.forEach(i=>{if(!f[i.k]){miss.push(i.k==='fonct'?'Diagnostic : fonctionnelle?':i.k==='poll'?'Diagnostic : polluante?':i.t);const sg=$('seg-'+i.k);if(sg)sg.classList.add('invalid')}});
+  return miss}
+
+/* ---------- génération du Word ---------- */
+async function buildDocx(f){
+  const zip=await JSZip.loadAsync(TEMPLATE_B64,{base64:true});
+  let x=applyIf(tpl.doc,flags(f));x=fillTokens(x,fields(f),false);const pb=photoBlocks();x=x.replace('{{PHOTOS1}}',pb.p1).replace('{{PHOTOS2}}',pb.p2);
+  zip.file('word/document.xml',x);
+  let foot=await zip.file('word/footer2.xml').async('string');zip.file('word/footer2.xml',fillTokens(foot,fields(f),false));
+  let rels=await zip.file('word/_rels/document.xml.rels').async('string');let add='';
+  photos.forEach((p,i)=>{zip.file('word/media/photo'+(i+1)+'.jpg',p.blob);add+='<Relationship Id="rIdPhoto'+(i+1)+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/photo'+(i+1)+'.jpg"/>'});
+  zip.file('word/_rels/document.xml.rels',rels.replace('</Relationships>',add+'</Relationships>'));
+  let ct=await zip.file('[Content_Types].xml').async('string');if(ct.indexOf('Extension="jpg"')<0)ct=ct.replace('<Default Extension="jpeg"','<Default Extension="jpg" ContentType="image/jpeg"/><Default Extension="jpeg"');zip.file('[Content_Types].xml',ct);
+  return zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',compression:'DEFLATE'});
+}
+const dlReady=(window.claude&&window.claude.use)?window.claude.use('downloads').catch(()=>null):Promise.resolve(null);
+async function saveFile(blob,name){const dl=await dlReady;
+  if(dl){try{await dl.save({filename:name,data:blob});return 'ok'}catch(e){if(e&&e.code==='declined')return 'declined';if(e&&e.code==='rate_limited')return 'busy';if(!['unavailable','not_granted','capability_disabled','capability_removed'].includes(e&&e.code))throw e}}
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000);return 'ok'}
+function status(t,cls){const s=$('status');s.textContent=t;s.className='status'+(cls?' '+cls:'')}
+$('btn-docx').addEventListener('click',async()=>{const f=read();const miss=validate(f);
+  if(miss.length){status('Il manque : '+miss.join(', ')+'.','err');return}
+  if(['fluo','fum','sat'].some(k=>f[k]==='na')&&!['fluo','fum','sat'].some(k=>f[k]==='mauv')){status('N/A est choisi pour un test, mais aucun autre test n\'est inadéquat. Corrige la section Inspection.','err');return}
+  if(INSP.some(i=>f[i.k]==='nf')){status('Un test est marqué « Non fait » : la lettre modèle décrit tous les essais comme réalisés, elle ne peut pas être générée.','err');return}
+  if(!tpl){status('Le modèle charge encore, réessaie dans une seconde.','err');return}
+  status('Création du Word…');
+  try{const blob=await buildDocx(f);const r=await saveFile(blob,fileName(f));
+    status(r==='ok'?'Word créé : '+fileName(f):r==='declined'?'Téléchargement annulé.':'Une fenêtre de téléchargement est déjà ouverte.',r==='ok'?'ok':'');}
+  catch(e){console.error(e);status('Le Word n\'a pas pu être créé ('+(e&&e.message||e)+').','err')}});
+
+/* ---------- photos ---------- */
+async function loadPhoto(file){let bmp;
+  try{bmp=await createImageBitmap(file,{imageOrientation:'from-image'})}catch(e){
+    bmp=await new Promise((res,rej)=>{const im=new Image();im.onload=()=>res(im);im.onerror=()=>rej(new Error('format'));im.src=URL.createObjectURL(file)})}
+  const w0=bmp.width,h0=bmp.height,s=Math.min(1,1600/Math.max(w0,h0));const w=Math.round(w0*s),h=Math.round(h0*s);
+  const cv=document.createElement('canvas');cv.width=w;cv.height=h;const g=cv.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,w,h);g.drawImage(bmp,0,0,w,h);
+  const blob=await new Promise(r=>cv.toBlob(r,'image/jpeg',.85));return{blob,w,h,url:URL.createObjectURL(blob),name:file.name}}
+async function addFiles(list){const files=[...list].filter(f=>/^image\//.test(f.type)||/\.(heic|heif|jpe?g|png|webp)$/i.test(f.name));let bad=[];
+  status('Préparation des photos…');
+  for(const f of files){try{photos.push(await loadPhoto(f))}catch(e){bad.push(f.name)}}
+  renderThumbs();update();
+  status(bad.length?'Format non lu pour : '+bad.join(', ')+' (les photos HEIC d\'iPhone : exporte-les en JPEG).':photos.length+' photo(s) prête(s).',bad.length?'err':'')}
+function renderThumbs(){$('thumbs').innerHTML=photos.map((p,i)=>'<div class="thumb"><span class="n">'+(i+1)+'</span><img alt="Photo '+(i+1)+'" src="'+p.url+'"><div class="tb"><button type="button" data-a="l" data-i="'+i+'" aria-label="Déplacer avant">←</button><button type="button" class="del" data-a="d" data-i="'+i+'" aria-label="Retirer">Retirer</button><button type="button" data-a="r" data-i="'+i+'" aria-label="Déplacer après">→</button></div></div>').join('')}
+$('thumbs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const i=+b.dataset.i;
+  if(b.dataset.a==='d'){URL.revokeObjectURL(photos[i].url);photos.splice(i,1)}
+  else{const j=b.dataset.a==='l'?i-1:i+1;if(j<0||j>=photos.length)return;[photos[i],photos[j]]=[photos[j],photos[i]]}
+  renderThumbs();update()});
+const drop=$('drop');drop.addEventListener('click',()=>$('files').click());drop.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();$('files').click()}});
+$('files').addEventListener('change',e=>{addFiles(e.target.files);e.target.value=''});
+['dragenter','dragover'].forEach(t=>drop.addEventListener(t,e=>{e.preventDefault();drop.classList.add('over')}));
+['dragleave','drop'].forEach(t=>drop.addEventListener(t,e=>{e.preventDefault();drop.classList.remove('over')}));
+drop.addEventListener('drop',e=>addFiles(e.dataTransfer.files));
+
+/* ---------- divers ---------- */
+function today(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+$('form').addEventListener('input',e=>{if(e.target.classList)e.target.classList.remove('invalid');update()});
+$('form').addEventListener('change',e=>{const s=e.target.closest&&e.target.closest('.seg');if(s)s.classList.remove('invalid');if(e.target.classList)e.target.classList.remove('invalid')});$('form').addEventListener('change',update);$('form').addEventListener('submit',e=>e.preventDefault());
+$('copy-adr').addEventListener('click',()=>{$('adr_trav').value=$('adresse').value;$('ville_trav').value=$('ville').value;update()});
+let resetArmed=false;
+$('btn-reset').addEventListener('click',()=>{if(!resetArmed){resetArmed=true;$('btn-reset').textContent='Confirmer : tout effacer';setTimeout(()=>{resetArmed=false;$('btn-reset').textContent='Nouvelle lettre'},3500);return}
+  resetArmed=false;$('btn-reset').textContent='Nouvelle lettre';$('form').reset();$('province').value='Québec';$('dlettre').value=today();photos.forEach(p=>URL.revokeObjectURL(p.url));photos=[];renderThumbs();
+  document.querySelectorAll('.invalid').forEach(e=>e.classList.remove('invalid'));update();status('Formulaire vidé.')});
+$('btn-example').addEventListener('click',()=>{write({muni:'magog',annee:'1987',annee_mq:false,cap_mq:false,civ1:'Mme',nom1:'Exemple Tremblay',dest2:false,nom2:'',adresse:'123, rue des Érables',ville:'Magog',province:'Québec',cp:'J1X 0A0',
+  nref:'0000-26',lot:'1234567',adr_trav:'123, rue des Érables',ville_trav:'Magog',d1:'2026-09-21',d2:'2026-09-23',civtech:'M.',tech:'Philippe Drouin',dlettre:today(),
+  chambres:'3',fosse:'en béton',cap:'3.4',capunit:'m3',epur:'modifié',plomb:'bon',niv:'bon',fluo:'bon',fum:'bon',sat:'bon',dist:'bon',fonct:'oui',poll:'non'});update();status('Exemple fictif chargé — remplace par les vraies données.')});
+
+(async function init(){
+  try{const f=JSON.parse(localStorage.getItem('expertise-septique-brouillon')||'null');if(f)write(f)}catch(e){}
+  if(!$('dlettre').value)$('dlettre').value=today();update();
+  try{const zip=await JSZip.loadAsync(TEMPLATE_B64,{base64:true});
+    tpl={doc:await zip.file('word/document.xml').async('string')};
+    media.logo=URL.createObjectURL(await zip.file('word/media/image6.png').async('blob'));
+    media.sig=URL.createObjectURL(await zip.file('word/media/image1.png').async('blob'));
+    update()}catch(e){console.error(e);$('paper').textContent='Le modèle Word n\'a pas pu être chargé.'}
+})();
+</script>
