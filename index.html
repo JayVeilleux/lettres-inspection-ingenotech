@@ -162,12 +162,6 @@ input.invalid,select.invalid{border-color:var(--bad);background:var(--bad-soft)}
         <button type="button" class="btn" id="btn-example">Remplir un exemple</button>
         <button type="button" class="btn" id="btn-reset">Nouvelle lettre</button>
       </div>
-      <div class="actions">
-        <button type="button" class="btn" id="btn-print">Imprimer</button>
-        <button type="button" class="btn" id="btn-pdf">Enregistrer en PDF</button>
-        <button type="button" class="btn primary" id="btn-docx-top">Télécharger le Word</button>
-      </div>
-      <div class="status" id="status-top" aria-live="polite"></div>
     </div>
   </header>
 
@@ -284,8 +278,12 @@ input.invalid,select.invalid{border-color:var(--bad);background:var(--bad-soft)}
       </fieldset>
 
       <div class="bar">
-        <div class="status" id="status">Prêt.</div>
-        <button type="button" class="btn primary" id="btn-docx">Télécharger le Word</button>
+        <div class="status" id="status" aria-live="polite">Prêt.</div>
+        <div class="actions">
+          <button type="button" class="btn" id="btn-print">Imprimer</button>
+          <button type="button" class="btn" id="btn-pdf">Enregistrer en PDF</button>
+          <button type="button" class="btn primary" id="btn-docx">Télécharger le Word</button>
+        </div>
       </div>
     </form>
 
@@ -657,7 +655,7 @@ async function onPrint(){const f=read();if(!checkReady(f))return;
       catch(e){window.open(url,'_blank');status('La lettre s\'ouvre dans un nouvel onglet : imprime-la de là (Cmd + P).','ok')}},250)};
     fr.src=url}
   catch(e){console.error(e);if(win)win.close();status('L\'impression n\'a pas pu être préparée ('+(e&&e.message||e)+').','err')}}
-$('btn-docx').addEventListener('click',onWord);$('btn-docx-top').addEventListener('click',onWord);
+$('btn-docx').addEventListener('click',onWord);
 $('btn-pdf').addEventListener('click',onPdf);$('btn-print').addEventListener('click',onPrint);
 dlReady.then(d=>{if(d)$('btn-print').hidden=true});
 
