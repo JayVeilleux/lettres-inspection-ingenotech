@@ -1,7 +1,7 @@
 // Service worker minimal : rend l'app installable et garde une copie de la coquille
 // pour fonctionner hors ligne. Toujours « réseau d'abord » : la dernière version en
 // ligne est utilisée dès qu'il y a une connexion, la copie locale seulement hors ligne.
-var CACHE = 'lettres-expertise-shell-v1';
+var CACHE = 'lettres-expertise-shell-v2';
 var SHELL = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png', './jszip.min.js'];
 self.addEventListener('install', function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(SHELL); }).then(function () { return self.skipWaiting(); }));
