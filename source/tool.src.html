@@ -37,7 +37,10 @@ header.top p{margin:4px 0 0;color:var(--muted);max-width:60ch}
 .btn:focus-visible,input:focus-visible,select:focus-visible,.seg label:focus-within{outline:2px solid var(--accent);outline-offset:2px}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .btn.small{padding:5px 9px;font-size:13px}
-.actions{display:flex;flex-wrap:wrap;gap:8px}
+.actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+.top-right{display:flex;flex-direction:column;align-items:flex-end;gap:8px;max-width:100%}
+.top-right .status{text-align:right;max-width:52ch}
+@media (max-width:640px){.top-right{align-items:stretch}.actions{justify-content:flex-start}.top-right .status{text-align:left}}
 .grid{display:grid;grid-template-columns:minmax(0,560px) minmax(0,1fr);gap:22px;align-items:start}
 @media (max-width:1060px){.grid{grid-template-columns:minmax(0,1fr)}}
 form{display:flex;flex-direction:column;gap:14px;min-width:0}
@@ -141,9 +144,17 @@ input.invalid,select.invalid{border-color:var(--bad);background:var(--bad-soft)}
       <h1>Lettres d'expertise — installations septiques</h1>
       <p>Retranscris le formulaire de la ville rempli sur le terrain. La lettre se construit toute seule selon les réponses, prête à signer.</p>
     </div>
-    <div class="actions">
-      <button type="button" class="btn" id="btn-example">Remplir un exemple</button>
-      <button type="button" class="btn" id="btn-reset">Nouvelle lettre</button>
+    <div class="top-right">
+      <div class="actions">
+        <button type="button" class="btn" id="btn-example">Remplir un exemple</button>
+        <button type="button" class="btn" id="btn-reset">Nouvelle lettre</button>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn" id="btn-print">Imprimer</button>
+        <button type="button" class="btn" id="btn-pdf">Enregistrer en PDF</button>
+        <button type="button" class="btn primary" id="btn-docx-top">Télécharger le Word</button>
+      </div>
+      <div class="status" id="status-top" aria-live="polite"></div>
     </div>
   </header>
 
@@ -273,6 +284,7 @@ input.invalid,select.invalid{border-color:var(--bad);background:var(--bad-soft)}
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
 <script>
 const TEMPLATE_B64="__TEMPLATE_B64__";
 const $=id=>document.getElementById(id);
@@ -488,21 +500,153 @@ async function buildDocx(f){
   let ct=await zip.file('[Content_Types].xml').async('string');if(ct.indexOf('Extension="jpg"')<0)ct=ct.replace('<Default Extension="jpeg"','<Default Extension="jpg" ContentType="image/jpeg"/><Default Extension="jpeg"');zip.file('[Content_Types].xml',ct);
   return zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',compression:'DEFLATE'});
 }
+/* ---------- PDF natif (dessiné à partir du même XML Word que le .docx) ---------- */
+const FOOTER_PNG='__FOOTER_B64__';
+const PT=25.4/72, TW=25.4/1440, EMU=1/36000;
+const PG={w:215.9,h:279.4,ml:25.4,mr:25.4,top:37.0,limFirst:259.4,limOther:256.0};
+const AUTO_SP=14*PT;
+let pdfImgs=null;
+const blobToDataUrl=b=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(b)});
+async function pdfAssets(){if(pdfImgs)return pdfImgs;const zip=await JSZip.loadAsync(TEMPLATE_B64,{base64:true});
+  pdfImgs={logo:await blobToDataUrl(await zip.file('word/media/image6.png').async('blob')),sig:await blobToDataUrl(await zip.file('word/media/image1.png').async('blob')),foot:'data:image/png;base64,'+FOOTER_PNG};return pdfImgs}
+function wv(el,name){return el?wAttr(el,name):null}
+function pInfo(p){const pp=kid(p,'pPr');const st=wv(kid(pp,'pStyle'),'val');const web=st==='NormalWeb';const sp=kid(pp,'spacing');
+  const num=(e,n,d)=>{const v=wv(e,n);return v==null?d:parseInt(v,10)};
+  let before=web?AUTO_SP:0,after=web?AUTO_SP:0;
+  if(sp){if(wv(sp,'before')!=null&&wv(sp,'beforeAutospacing')!=='1')before=num(sp,'before',0)*TW;if(wv(sp,'after')!=null&&wv(sp,'afterAutospacing')!=='1')after=num(sp,'after',0)*TW}
+  const line=sp&&wv(sp,'line')?num(sp,'line',240):240;const ind=kid(pp,'ind');
+  const left=ind?num(ind,'left',0)*TW:0,first=ind?(num(ind,'firstLine',0)-num(ind,'hanging',0))*TW:0;
+  const tabs=[];const tb=kid(pp,'tabs');if(tb)for(const t of tb.children)if(t.localName==='tab')tabs.push(num(t,'pos',0)*TW);tabs.sort((a,b)=>a-b);
+  const mr=kid(kid(pp,'rPr'),'sz');const markSize=mr?parseInt(wv(mr,'val'),10)/2:12;
+  return{jc:wv(kid(pp,'jc'),'val'),before,after,line,left,first,tabs,markSize,sect:!!kid(pp,'sectPr')}}
+function runStyle(r){const rp=kid(r,'rPr');const st=wv(kid(rp,'rStyle'),'val');const bEl=kid(rp,'b');
+  const b=bEl?onOff(bEl):st==='lev';const i=onOff(kid(rp,'i'))||st==='Accentuation';const uEl=kid(rp,'u');const sz=kid(rp,'sz');
+  return{b,i,u:!!(uEl&&wv(uEl,'val')!=='none'),size:sz?parseInt(wv(sz,'val'),10)/2:12}}
+function pItems(p){const items=[];const add=r=>{const s=runStyle(r);for(const c of r.children){
+    if(c.localName==='t'){const parts=c.textContent.replace(/’/g,"'").split(/( )/);for(const x of parts){if(x===' ')items.push({sp:1,...s});else if(x)items.push({w:x,...s})}}
+    else if(c.localName==='tab')items.push({tab:1,...s});
+    else if(c.localName==='br'&&wv(c,'type')==='page')items.push({pb:1});
+    else if(c.localName==='drawing'&&new XMLSerializer().serializeToString(c).indexOf('"rId8"')>=0)items.push({sig:1});}};
+  for(const c of p.children){if(c.localName==='r')add(c);else if(c.localName==='hyperlink')for(const r of c.children)if(r.localName==='r')add(r)}
+  // fusionne les morceaux de mots consécutifs (runs coupés au milieu d'un mot)
+  const out=[];for(const it of items){const prev=out[out.length-1];if(it.w&&prev&&prev.w){prev.parts=prev.parts||[{w:prev.w,b:prev.b,i:prev.i,u:prev.u,size:prev.size}];prev.parts.push({w:it.w,b:it.b,i:it.i,u:it.u,size:it.size});prev.w+=it.w;prev.size=Math.max(prev.size,it.size)}else out.push(it)}
+  return out}
+const fstyle=(b,i)=>b&&i?'bolditalic':b?'bold':i?'italic':'normal';
+function partsOf(w){return w.parts||[{w:w.w,b:w.b,i:w.i,u:w.u,size:w.size}]}
+function measure(pdf,w){let t=0;for(const p of partsOf(w)){pdf.setFont('helvetica',fstyle(p.b,p.i));pdf.setFontSize(p.size);t+=pdf.getTextWidth(p.w.replace(/ /g,' '))}return t}
+function spaceW(pdf,size){pdf.setFont('helvetica','normal');pdf.setFontSize(size);return pdf.getTextWidth(' ')}
+
+async function buildPdf(f){
+  const A=await pdfAssets();const pdfName=fileName(f).replace(/\.docx$/,'.pdf');
+  let x=applyIf(tpl.doc,flags(f));x=fillTokens(x,fields(f),false);
+  x=x.replace('{{PHOTOS1}}','<w:p><w:r><w:t>§PHOTOS1§</w:t></w:r></w:p>').replace('{{PHOTOS2}}','<w:p><w:r><w:t>§PHOTOS2§</w:t></w:r></w:p>');
+  const doc=new DOMParser().parseFromString(x,'application/xml');const body=doc.getElementsByTagNameNS(W,'body')[0];
+  const pdf=new window.jspdf.jsPDF({unit:'mm',format:[PG.w,PG.h],compress:true});
+  const pages=['first'];let y=PG.top,prevAfter=0,atTop=true,section=1,sigAnchor=null;
+  const lim=()=>pages[pages.length-1]==='first'?PG.limFirst:PG.limOther;
+  const newPage=kind=>{pdf.addPage([PG.w,PG.h]);pages.push(kind||'other');y=PG.top;atTop=true;prevAfter=0};
+  const CW=PG.w-PG.ml-PG.mr;
+  const chunks=[];for(let i=0;i<photos.length;i+=4)chunks.push(photos.slice(i,i+4));
+  for(const p of photos)if(!p.dataUrl)p.dataUrl=await blobToDataUrl(p.blob);
+  const drawPhotoTable=chunk=>{const rowH=5500*TW,cellW=4680*TW;
+    for(let r=0;r<chunk.length;r+=2){if(y+rowH>lim()&&!atTop)newPage();
+      for(let c=0;c<2;c++){const ph=chunk[r+c];if(!ph)continue;const sc=Math.min(2850000*EMU/ph.w,3150000*EMU/ph.h);const w=ph.w*sc,h=ph.h*sc;
+        pdf.addImage(ph.dataUrl,'JPEG',PG.ml+c*cellW+(cellW-w)/2,y+(rowH-h)/2,w,h)}
+      y+=rowH;atTop=false}prevAfter=0};
+  const drawPara=(p,opt)=>{opt=opt||{};const pi=pInfo(p);const items=pItems(p);
+    const txt=items.filter(i=>i.w).map(i=>i.w).join('');
+    if(txt==='§PHOTOS1§'){chunks.slice(0,-1).forEach((c,k)=>{if(k>0)newPage();drawPhotoTable(c)});return}
+    if(txt==='§PHOTOS2§'){if(chunks.length)drawPhotoTable(chunks[chunks.length-1]);return}
+    const x0=PG.ml+(opt.dx||0)+pi.left;const maxW=(opt.w||CW)-pi.left;
+    const gap=atTop?0:Math.max(prevAfter,pi.before);y+=gap;
+    // découpe en lignes
+    const lines=[];let cur=[],curW=0,lineIdx=0;
+    const firstX=()=>lines.length===0?pi.first:0;
+    const pbIdx=items.findIndex(i=>i.pb);
+    const seq=pbIdx>=0?items.slice(0,pbIdx):items;
+    for(const it of seq){if(it.sig)continue;
+      if(it.tab){const xi=firstX()+curW;const stop=pi.tabs.find(t=>t-pi.left>xi+0.01);const nx=stop!=null?stop-pi.left:(Math.floor((xi+pi.left)/(720*TW))+1)*720*TW-pi.left;cur.push({tab:1,width:nx-xi,size:it.size});curW+=nx-xi;continue}
+      if(it.sp){cur.push({sp:1,width:spaceW(pdf,it.size),size:it.size});curW+=cur[cur.length-1].width;continue}
+      const w=measure(pdf,it);
+      if(cur.length&&firstX()+curW+w>maxW+0.01){while(cur.length&&cur[cur.length-1].sp){curW-=cur.pop().width}lines.push(cur);cur=[];curW=0}
+      if(!cur.length&&false){}cur.push({...it,width:w});curW+=w}
+    while(cur.length&&cur[cur.length-1].sp){curW-=cur.pop().width}
+    lines.push(cur);
+    const LH=lines.map(ln=>Math.max(pi.markSize,...ln.map(t=>t.size||0).filter(Boolean))*1.149*PT*(pi.line/240));
+    const n=lines.length;
+    lines.forEach((ln,li)=>{const sizeMax=Math.max(pi.markSize,...ln.map(t=>t.size||0).filter(Boolean));
+      const lh=LH[li];const L=lim()+0.01;
+      if(y+lh>L&&!atTop)newPage();
+      else if(!atTop&&n>=2&&li===0&&y+lh+LH[1]>L)newPage();            // pas de ligne seule en bas de page
+      else if(!atTop&&n>=3&&li===n-2&&y+lh+LH[n-1]>L)newPage();        // pas de dernière ligne seule en haut de page
+      const words=ln;const lineX=x0+(li===0?pi.first:0);const natural=words.reduce((s,t)=>s+t.width,0);
+      const spaces=words.filter(t=>t.sp).length;let extra=0;
+      const isLast=li===lines.length-1;
+      if(pi.jc==='both'&&!isLast&&spaces>0)extra=Math.max(0,(maxW-(li===0?pi.first:0)-natural)/spaces);
+      let cx=lineX;if(pi.jc==='center')cx=x0+(maxW-natural)/2;
+      const base=y+sizeMax*0.905*PT;
+      for(const t of words){if(t.sp){cx+=t.width+extra;continue}if(t.tab){cx+=t.width;continue}
+        let px=cx;for(const pt of partsOf(t)){pdf.setFont('helvetica',fstyle(pt.b,pt.i));pdf.setFontSize(pt.size);const s=pt.w.replace(/ /g,' ');pdf.text(s,px,base);const ww=pdf.getTextWidth(s);
+          if(pt.u){pdf.setLineWidth(0.05*pt.size*PT);pdf.line(px,base+0.12*pt.size*PT,px+ww,base+0.12*pt.size*PT)}px+=ww}
+        cx+=t.width}
+      // soulignement continu sur les espaces entre mots soulignés
+      for(let k=1;k<words.length-1;k++){const t=words[k];if(t.sp&&words[k-1].u&&words[k+1].u){let sx=lineX;for(let j=0;j<k;j++)sx+=words[j].width+(words[j].sp?extra:0);const sz=words[k-1].size;pdf.setLineWidth(0.05*sz*PT);pdf.line(sx,base+0.12*sz*PT,sx+t.width+extra,base+0.12*sz*PT)}}
+      y+=lh;atTop=false});
+    prevAfter=pi.after;
+    if(pbIdx>=0){newPage();}
+    if(pi.sect){section=2;newPage('sec2')}
+  };
+  for(const el of body.children){
+    if(el.localName==='p')drawPara(el);
+    else if(el.localName==='tbl'){
+      if(el.textContent.indexOf('Marc Raby')>=0){const rowH=684*TW;if(y+rowH>lim()&&!atTop)newPage();const top=y;
+        pdf.addImage(A.sig,'PNG',PG.ml-160655*EMU,top-22.9,2340847*EMU,1329267*EMU); // calé sur le rendu Word (tableau flottant)
+        const cellPs=[...el.getElementsByTagNameNS(W,'p')];prevAfter=0;atTop=true;
+        cellPs.forEach(cp=>drawPara(cp,{dx:108*TW,w:2017*TW}));atTop=false;y=Math.max(y,top+rowH);sigAnchor=y;prevAfter=0}
+    }
+  }
+  const n=pdf.getNumberOfPages();
+  for(let i=1;i<=n;i++){pdf.setPage(i);
+    pdf.addImage(A.logo,'PNG',PG.ml+4503420*EMU,9.9-389512*EMU,2343785*EMU,1619885*EMU);
+    const kind=pages[i-1];
+    if(kind==='sec2')pdf.addImage(A.foot,'PNG',0,230,PG.w,PG.w*292/1275);
+    else if(kind!=='first'){pdf.setFont('helvetica','normal');pdf.setFontSize(8);pdf.text('Dossier : '+pdfName,PG.ml,260.2+8*0.905*PT)}}
+  return{blob:pdf.output('blob'),name:pdfName};
+}
+
 const dlReady=(window.claude&&window.claude.use)?window.claude.use('downloads').catch(()=>null):Promise.resolve(null);
 async function saveFile(blob,name){const dl=await dlReady;
   if(dl){try{await dl.save({filename:name,data:blob});return 'ok'}catch(e){if(e&&e.code==='declined')return 'declined';if(e&&e.code==='rate_limited')return 'busy';if(!['unavailable','not_granted','capability_disabled','capability_removed'].includes(e&&e.code))throw e}}
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000);return 'ok'}
-function status(t,cls){const s=$('status');s.textContent=t;s.className='status'+(cls?' '+cls:'')}
-$('btn-docx').addEventListener('click',async()=>{const f=read();const miss=validate(f);
-  if(miss.length){status('Il manque : '+miss.join(', ')+'.','err');return}
-  if(['fluo','fum','sat'].some(k=>f[k]==='na')&&!['fluo','fum','sat'].some(k=>f[k]==='mauv')){status('N/A est choisi pour un test, mais aucun autre test n\'est inadéquat. Corrige la section Inspection.','err');return}
-  if(INSP.some(i=>f[i.k]==='nf')){status('Un test est marqué « Non fait » : la lettre modèle décrit tous les essais comme réalisés, elle ne peut pas être générée.','err');return}
-  if(!tpl){status('Le modèle charge encore, réessaie dans une seconde.','err');return}
-  status('Création du Word…');
-  try{const blob=await buildDocx(f);const r=await saveFile(blob,fileName(f));
-    if(r==='ok')histAdd(f);
+function status(t,cls){for(const id of ['status','status-top']){const s=$(id);if(!s)continue;s.textContent=t;s.className='status'+(cls?' '+cls:'')}}
+function checkReady(f){const miss=validate(f);
+  if(miss.length){status('Il manque : '+miss.join(', ')+'.','err');return false}
+  if(['fluo','fum','sat'].some(k=>f[k]==='na')&&!['fluo','fum','sat'].some(k=>f[k]==='mauv')){status('N/A est choisi pour un test, mais aucun autre test n\'est inadéquat. Corrige la section Inspection.','err');return false}
+  if(INSP.some(i=>f[i.k]==='nf')){status('Un test est marqué « Non fait » : la lettre modèle décrit tous les essais comme réalisés, elle ne peut pas être générée.','err');return false}
+  if(!tpl){status('Le modèle charge encore, réessaie dans une seconde.','err');return false}
+  return true}
+async function onWord(){const f=read();if(!checkReady(f))return;status('Création du Word…');
+  try{const blob=await buildDocx(f);const r=await saveFile(blob,fileName(f));if(r==='ok')histAdd(f);
     status(r==='ok'?'Word créé : '+fileName(f):r==='declined'?'Téléchargement annulé.':'Une fenêtre de téléchargement est déjà ouverte.',r==='ok'?'ok':'');}
-  catch(e){console.error(e);status('Le Word n\'a pas pu être créé ('+(e&&e.message||e)+').','err')}});
+  catch(e){console.error(e);status('Le Word n\'a pas pu être créé ('+(e&&e.message||e)+').','err')}}
+async function onPdf(){const f=read();if(!checkReady(f))return;status('Création du PDF…');
+  try{const o=await buildPdf(f);const r=await saveFile(o.blob,o.name);if(r==='ok')histAdd(f);
+    status(r==='ok'?'PDF créé : '+o.name:r==='declined'?'Téléchargement annulé.':'Une fenêtre de téléchargement est déjà ouverte.',r==='ok'?'ok':'');}
+  catch(e){console.error(e);status('Le PDF n\'a pas pu être créé ('+(e&&e.message||e)+'). Utilise le Word en attendant.','err')}}
+async function onPrint(){const f=read();if(!checkReady(f))return;
+  const ios=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  const win=ios?window.open('','_blank'):null;status('Préparation de l\'impression…');
+  try{const o=await buildPdf(f);const url=URL.createObjectURL(o.blob);histAdd(f);
+    if(win){win.location.href=url;status('La lettre s\'ouvre dans un nouvel onglet : utilise le bouton Partager → Imprimer.','ok');return}
+    let fr=document.getElementById('print-frame');if(fr)fr.remove();fr=document.createElement('iframe');fr.id='print-frame';
+    fr.style.cssText='position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0';document.body.appendChild(fr);
+    fr.onload=()=>{setTimeout(()=>{try{fr.contentWindow.focus();fr.contentWindow.print();status('Fenêtre d\'impression ouverte.','ok')}
+      catch(e){window.open(url,'_blank');status('La lettre s\'ouvre dans un nouvel onglet : imprime-la de là (Cmd + P).','ok')}},250)};
+    fr.src=url}
+  catch(e){console.error(e);if(win)win.close();status('L\'impression n\'a pas pu être préparée ('+(e&&e.message||e)+').','err')}}
+$('btn-docx').addEventListener('click',onWord);$('btn-docx-top').addEventListener('click',onWord);
+$('btn-pdf').addEventListener('click',onPdf);$('btn-print').addEventListener('click',onPrint);
+dlReady.then(d=>{if(d)$('btn-print').hidden=true});
 
 /* ---------- photos ---------- */
 async function loadPhoto(file){let bmp;
