@@ -43,13 +43,6 @@ header.top p{margin:4px 0 0;color:var(--muted);max-width:60ch}
 @media (max-width:640px){.top-right{align-items:stretch}.actions{justify-content:flex-start}.top-right .status{text-align:left}}
 .grid{display:grid;grid-template-columns:minmax(0,560px) minmax(0,1fr);gap:22px;align-items:start}
 @media (max-width:1060px){.grid{grid-template-columns:minmax(0,1fr)}}
-.pv-col{display:flex;flex-direction:column;gap:16px;min-width:0}
-.card{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:14px 16px 16px;box-shadow:var(--shadow)}
-.card-h{font:600 16px var(--f-head);margin:0 0 12px}
-.stack-actions{display:flex;flex-direction:column;gap:8px}
-.btn.full{width:100%;text-align:center}
-.actions-card{position:sticky;top:calc(12px + env(safe-area-inset-top,0px))}
-.actions-card .status{margin-top:10px}
 form{display:flex;flex-direction:column;gap:14px;min-width:0}
 fieldset{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:14px 16px 16px;margin:0;display:flex;flex-direction:column;gap:12px;min-width:0}
 legend{font:600 16px var(--f-head);padding:0 6px;margin-left:-6px;display:flex;gap:8px;align-items:baseline}
@@ -115,16 +108,17 @@ input.invalid,select.invalid{border-color:var(--bad);background:var(--bad-soft)}
 .thumb .tb button{border:0;background:none;color:var(--ink);cursor:pointer;font-size:14px;padding:2px 6px;border-radius:4px}
 .thumb .tb button:hover{background:var(--accent-soft)}
 .thumb .tb button.del{color:var(--bad)}
-/* Carte Générer */
+/* Barre d'actions */
+.bar{position:sticky;bottom:0;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;box-shadow:var(--shadow);padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
 .status{font-size:13.5px;color:var(--muted);min-width:0}
 .status.err{color:var(--bad)}.status.ok{color:var(--ok)}
 /* Aperçu */
-.pv{min-width:0}
+.pv{position:sticky;top:calc(12px + env(safe-area-inset-top,0px));min-width:0}
 .pv-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px;flex-wrap:wrap}
 .pv-head h2{font:600 16px var(--f-head);margin:0}
 .pv-head span{font-size:12.5px;color:var(--muted)}
 .paper-scroll{max-height:calc(100vh - 80px);overflow:auto;border-radius:6px}
-@media (max-width:1060px){.paper-scroll{max-height:none}}
+@media (max-width:1060px){.pv{position:static}.paper-scroll{max-height:none}}
 .paper{background:var(--paper);color:var(--paper-ink);box-shadow:var(--shadow);padding:36px 48px 48px;font:13.5px/1.5 Arial,Helvetica,sans-serif;border-radius:3px;min-width:0}
 @media (max-width:600px){.paper{padding:22px 18px;font-size:12.5px}}
 .paper .logo{display:block;margin-left:auto;width:170px;max-width:45%;margin-bottom:18px}
@@ -270,25 +264,20 @@ input.invalid,select.invalid{border-color:var(--bad);background:var(--bad-soft)}
         <div class="thumbs" id="thumbs"></div>
       </fieldset>
 
+      <div class="bar">
+        <div class="status" id="status" aria-live="polite">Prêt.</div>
+        <div class="actions">
+          <button type="button" class="btn" id="btn-print">Imprimer</button>
+          <button type="button" class="btn" id="btn-pdf">Enregistrer en PDF</button>
+          <button type="button" class="btn primary" id="btn-docx">Télécharger le Word</button>
+        </div>
+      </div>
     </form>
 
-    <div class="pv-col">
-      <section class="card actions-card" aria-label="Générer">
-        <h2 class="card-h">Générer</h2>
-        <div class="stack-actions">
-          <button type="button" class="btn primary full" id="btn-docx">Télécharger le Word</button>
-          <button type="button" class="btn full" id="btn-preview-toggle">Aperçu de la lettre</button>
-          <button type="button" class="btn full" id="btn-pdf">Enregistrer en PDF</button>
-          <button type="button" class="btn full" id="btn-print">Imprimer</button>
-        </div>
-        <div class="status" id="status" aria-live="polite">Prêt.</div>
-      </section>
-
-      <section class="card pv" id="preview-panel" hidden aria-label="Aperçu">
-        <div class="pv-head"><h2>Aperçu de la lettre</h2><span>En jaune : ce qui vient du formulaire · la mise en page exacte est celle du Word</span></div>
-        <div class="paper-scroll"><div class="paper" id="paper">Chargement du modèle…</div></div>
-      </section>
-    </div>
+    <section class="pv" aria-label="Aperçu">
+      <div class="pv-head"><h2>Aperçu de la lettre</h2><span>En jaune : ce qui vient du formulaire · la mise en page exacte est celle du Word</span></div>
+      <div class="paper-scroll"><div class="paper" id="paper">Chargement du modèle…</div></div>
+    </section>
   </div>
 </div>
 
@@ -655,7 +644,6 @@ async function onPrint(){const f=read();if(!checkReady(f))return;
   catch(e){console.error(e);if(win)win.close();status('L\'impression n\'a pas pu être préparée ('+(e&&e.message||e)+').','err')}}
 $('btn-docx').addEventListener('click',onWord);
 $('btn-pdf').addEventListener('click',onPdf);$('btn-print').addEventListener('click',onPrint);
-$('btn-preview-toggle').addEventListener('click',()=>{$('preview-panel').hidden=!$('preview-panel').hidden;});
 dlReady.then(d=>{if(d)$('btn-print').hidden=true});
 
 /* ---------- photos ---------- */
